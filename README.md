@@ -9,8 +9,9 @@ This repository contains the data, code and paper for the analysis of KPOP Femal
 
 The repo is structured as:
 
+-   `data` contains all the raw dataset in rds files.
 -   `other` contains details about LLM chat interactions.
--   `paper` contains the files used to generate the paper, including the Quarto document and reference bibliography file, as well as the PDF of the paper and rds files. 
+-   `paper` contains the files used to generate the paper, including the Quarto document and reference bibliography file, as well as the PDF of the paper. 
 -   `scripts` contains the R scripts used to download data.
 
 
