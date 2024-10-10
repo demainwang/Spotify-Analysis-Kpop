@@ -1,0 +1,200 @@
+---
+title: "Spotify Analysis on Kpop Female Groups: Twice, Aespa and Red Velvet"
+author: 
+  - Anqi Xu, Yunkai Gu, Yitong Wang
+thanks: "Code and data are available at: https://github.com/demainwang/Spotify-Analysis-Kpop.git"
+date: 10 October 2024
+date-format: long
+abstract: "The musical patterns of three major K pop female groups, Aespa, Red Velvet, and TWICE, are examined in this study using Spotify data on song duration, valence, and album release date. We identified variations in song duration and emotional expression throughout time, as well as significant disparities in each group's contribution to the broader K pop music landscape. In recent years, Aespa's music has taken on a more upbeat tone, whereas TWICE has demonstrated a wide range of emotional diversity. The data provide insights into these organizations' shifting music production techniques, demonstrating how trends in the K pop business change over time and influence worldwide music consumption habits."
+format: pdf
+toc: true
+number-sections: true
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(spotifyr)
+```
+
+
+# Introduction {#sec-introduction}
+
+The global popularity of K-pop has surged in recent years, particularly driven by the dynamic performances, innovative music production, and unique branding of female groups such as TWICE, Red Velvet, and Aespa. As these groups achieve international recognition, understanding the musical trends they represent can provide valuable insights into the evolving music tastes of global audiences. Spotify provides large-scale access to music consumption data, and enable quantitatively analyze the evolution of their music.
+
+This paper explores key musical characteristics, such as song duration and valence, alongside the frequency of album releases, for the three selected groups using Spotify data from 2015 to 2024. Through these analyses, we aim to identify trends and patterns in their musical evolution and contribute to a deeper understanding of the K-pop genre's development over the past decade. Specifically, we investigate how the duration of songs has changed, how emotionally positive or negative the music is, and how each group's contribution to the total number of releases has evolved over time.
+
+This research is important because it presents the evolving strategies of K-pop groups in the global music market, highlighting how they adapt to shifting consumer preferences. By analyzing these musical trends, we provide a quantitative basis for understanding the global success of these K-pop groups and offer insights into broader trends within the global music industry. 
+
+The remainder of this paper is structured as follows. @sec-data provides details on the data source, the specific variables used and analysis of constructed data visualization. Data tools and methodologies applied in this paper are stated in @sec-overview, and @sec-measurement explains the variables in detail. @sec-outcome presents analysis and visualization with multiple plots and corresponding descriptions. @sec-results presents the overall results of the whole research. @sec-appx provides additional details for the paper, including process of data downloads. The comprehensive structure ensures that the reader gains a full understanding of what was analyzed, the findings, and their significance.
+
+
+
+# Data {#sec-data}
+
+## Overview {#sec-overview}
+
+The dataset is originally obtained from Spotify [@spotify_api], a music streaming platform. 
+In the analysis procedure, We use the statistical programming language R [@citeR] to conduct the analyses in the paper. The `spotifyr` packages [@citespotify] were used to download the raw data from Spotify. Data cleaning process was done through `tidyverse` package [@citetidyverse]. `ggplot2` package [@citeggplot] and `lubridate` package [@citelubridate] are then used to make graphs.
+
+
+
+## Measurement {#sec-measurement}
+	
+The production and release of music could be affected by multiple factors in real life, such as shifts in musical styles, changes in listener preferences, impact of technological advancements and so on. As a large music steaming platform, Spotify gathers a large dataset with various data types from its users, which provides information of each singer or music group on such dynamics.
+
+The analysis in paper mainly focuses on three primary variables of the female Kpop groups Twice, Red Velvet and Aespa: album counts each year, song length, and valence. "Album counts" each year measures the number of albums the group released in one-year basis; "Song length" measures the duration of each song released by the groups; "Valence" captures the emotional tone of the song which has value between zero and one. It "signals the musical positiveness of the track". The higher value of valence, the more positive the song is.
+
+By employing statistical and visual analysis techniques, the paper aims to derive meaningful insights into the interrelationships among these variables. @sec-appx includes additional data details. 
+
+
+
+## Outcome variables {#sec-outcome}
+
+Analysis and data visualisation are conducted following with multiple plots and charts.
+
+```{r}
+#| label: fig-album
+#| fig-cap: Length of each Twice song over time
+#| echo: false
+#| warning: false
+#| message: false
+
+# Read the dataset
+twice <- readRDS("twice.rds")
+twice <- as_tibble(twice)
+
+aespa <- readRDS("aespa.rds")
+aespa <- as_tibble(aespa)
+
+red_velvet <- readRDS("red_velvet.rds")
+red_velvet <- as.tibble(red_velvet)
+
+
+# Create 'combined_data' that contains all album release information for three groups
+combined_data <- bind_rows(aespa, red_velvet, twice) |>
+  select(artist_name, album_release_date) |>
+  mutate(album_release_date = ymd(album_release_date)) 
+
+# Extract the year and count albums for all groups
+albums_per_year <- combined_data |>
+  mutate(year = year(album_release_date)) |>
+  count(artist_name, year)
+
+# Create a bar chart
+ggplot(albums_per_year, aes(x = year, y = n, fill = artist_name)) +
+  geom_col() +  # Stacked bar chart
+  theme_minimal() +
+  labs(
+    title = "Contribution of Each Artist to Album Releases Each Year",
+    x = "Year",
+    y = "Number of Albums Released",
+    fill = "Artist"
+  ) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_x_continuous(breaks = seq(min(albums_per_year$year), max(albums_per_year$year), 1))  # Adjust x-axis ticks
+```
+
+@fig-album represents the album release distribution of each group from 2015 to 2024. The number of albums released by each group is broken down by year and visualized by histogram. Different color is applied to identify different groups which red represents Aespa, blue for Red Velvet and green for TWICE.
+
+TWICE has been a significant contributor to the total number of albums released every year, particularly between 2016 and 2018, where they were the primary group releasing albums. While their contribution slightly decreased after 2018, TWICE remains the dominant group in terms of album releases. Red Velvet had a steady but lower album release contribution compared to TWICE. Aespa’s contribution starts in 2022, reflecting their later debut; nonetheless, Aespa quickly contributed a notable portion of albums, especially in 2023 and 2024, where their album releases were comparable to or even exceeded those of Red Velvet.
+
+
+
+```{r}
+#| label: fig-song-length
+#| fig-cap: Length of each Twice song over time
+#| echo: false
+#| warning: false
+#| message: false
+
+# Code referenced from https://tellingstorieswithdata.com/07-gather.html#spotify
+
+twice |>
+  mutate(album_release_date = ymd(album_release_date)) |>
+  ggplot(aes(
+    x = album_release_date,
+    y = duration_ms,
+    group = album_release_date
+  )) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.5, width = 0.3, height = 0) +
+  theme_minimal() +
+  labs(
+    x = "Album release date",
+    y = "Duration of song (ms)"
+  )
+```
+
+
+@fig-song-length illustrates the variation in song durations over time, with most songs concentrating between 180,000 to 220,000 milliseconds. There is not clear trend appear to indicate a obvious increase or decrease in song duration, the data shows occasional outliers with extremely longer durations, especially around 2018 and 2024. These outliers could be experimental tracks or unusual releases. Despite these exceptions, the bulk of songs have remained relatively stable in length throughout time, implying that the musician has consistently adhered to a set range of normal track lengths.
+
+
+```{r}
+#| label: fig-comparison
+#| fig-cap: Comparing valence over time, for aespa, Red Velvet and Twice
+#| echo: false
+#| warning: false
+#| message: false
+
+
+combined_data <- bind_rows(aespa, red_velvet, twice) |>
+  select(artist_name, album_release_date, valence) |>
+  mutate(album_release_date = ymd(album_release_date))
+
+
+ggplot(combined_data, aes(x = album_release_date, y = valence, color = artist_name)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth() +
+  theme_minimal() +
+  facet_wrap(facets = vars(artist_name), dir = "v") +
+  labs(
+    x = "Album Release Date",
+    y = "Valence",
+    color = "Artist"
+  ) +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")
+```
+
+The scatter plot @fig-comparison presents the valence trend based on the album release date for three K-pop groups, Aespa, Red Velvet, TWICE. The red line represents Aespa, blue line for Red Velvet and green line for TWICE.
+
+Aespa's valence shows a clear upward trend from 2022 to 2024, indicating their songs are becoming more positive or "happier" over time. Red Velvet has maintained a relatively stable valence over the years, though there is a slight downward shift around 2022. However, the overall valence of their music remains high, suggesting a consistently positive emotional tone. TWICE exhibits a more varied valence with fluctuations across the years but recent data from 2022 to 2024 suggests a possible slight rise in valence.
+
+
+
+# Results {#sec-results}
+
+Our findings reveal distinct trends among the groups. For instance, Aespa's recent music shows an upward trend in emotional positivity, while TWICE's emotional range is more variable, showing a mix of positive and neutral tones. Red Velvet, on the other hand, maintains a relatively stable musical valence over time. Additionally, we observe a decline in average song length since 2020, with shorter songs becoming more common, and identify how Aespa's recent rise in album releases compares to the longstanding dominance of TWICE.
+
+
+\newpage
+
+
+\appendix
+
+
+# Appendix {-}
+
+
+# Additional data details {#sec-appx}
+
+The original dataset is obtained from Spotify, a music streaming platform. The raw dataset contains 39 variables, each colomn representing certain piece of information for the music group.
+
+After downloading the raw dataset by `spotifyr` package [@citespotify], the raw dataset for each group is converted into rds file respectively. It is then made into tibble to make the analysis easier. 
+
+For the figures plotting three groups together, mutation process contributes to the data cleaning, creating tibble which contains the variables needed for analysis.
+
+
+\newpage
+
+
+# References
+
+
